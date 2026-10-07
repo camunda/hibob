@@ -13,7 +13,7 @@ module Bob
 
     def self.get(endpoint, params = {}, csv_response: false)
       url = build_url(endpoint, params)
-      response = RestClient.get(url, headers)
+      response = RestClient.get(url, headers(body: false))
       return create_csv(response.body) if csv_response
 
       JSON.parse(response.body)
@@ -50,7 +50,7 @@ module Bob
 
     def self.delete(endpoint)
       url = build_url(endpoint)
-      response = RestClient.delete(url, headers)
+      response = RestClient.delete(url, headers(body: false))
       response.code
     end
 
@@ -64,12 +64,15 @@ module Bob
       response.code
     end
 
-    def self.headers
-      {
+    # Bodyless requests (GET, DELETE) must not send Content-Type: Bob's Cloudflare
+    # edge answers custom-table GETs that carry it with an HTML 400.
+    def self.headers(body: true)
+      headers = {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
         Authorization: "Basic #{Base64.strict_encode64("#{Bob.access_user_name}:#{Bob.access_token}")}"
       }
+      headers[:'Content-Type'] = 'application/json' if body
+      headers
     end
 
     def self.build_url(endpoint, params = {})
